@@ -214,37 +214,37 @@ def SITE(trees, method="CWJ"):
 
 def dependency_to_derivation_tree(dep_graph, leaf="POS", dep=True):
     """
-    Convert an NLTK DependencyGraph to a context-free derivation tree with internal nodes
-    named after the POS, and leaves labeled 'POS*' or 'POS*'->word.
-
-    Parameters:
-        dep_graph: NLTK DependencyGraph.
-        leaf: "POS" for POS* leaves, "word" for word leaves under POS* node.
-        dep: If True, insert POS/dep relation nodes; if False, skip these and
-             directly attach dependent subtrees as daughters of POS nodes.
+    Convert an NLTK DependencyGraph to a context-free derivation tree,
+    with internal nodes named after the POS, and leaves labeled 'POS*'
+    or 'POS*'->word, **preserving surface word order** at every level.
     """
     nodes = {n['address']: n for n in dep_graph.nodes.values() if n['address'] is not None}
     children = {addr: [] for addr in nodes}
-    word_positions = {addr: addr for addr in nodes}
-
     for addr, node in nodes.items():
         head = node['head']
         rel = node['rel']
         if head is not None and head != 0:
             children[head].append((rel, addr))
 
-    def expand_node(node_id):
+    def expand(node_id):
         node = nodes[node_id]
         pos = node['tag']
-        relation_nodes = []
-        for rel, dep_id in sorted(children[node_id], key=lambda x: word_positions[x[1]]):
-            if dep:
-                rel_label = f"{pos}/{rel}"
-                relation_nodes.append(Tree(rel_label, [expand_node(dep_id)]))
-            else:
-                relation_nodes.append(expand_node(dep_id))
+        # Collect all items in this phrase: dependents and head
+        elements = []
 
-        # Leaf node: e.g. "VBD*" (possibly with word)
+        # Recursively expand each dependent
+        for rel, dep_id in children[node_id]:
+            dep_elements = expand(dep_id)
+            # Optionally, wrap each dependent in a POS/rel node
+            if dep:
+                # dep_elements is a list, usually of length 1 unless the dependent is discontinuous
+                dep_elements = [
+                    (idx, Tree(f"{pos}/{rel}", [subtree]))
+                    for idx, subtree in dep_elements
+                ]
+            elements.extend(dep_elements)
+
+        # Add head's own leaf at its position
         leaf_label = f"{pos}*"
         if leaf == "POS":
             leaf_val = leaf_label
@@ -252,13 +252,18 @@ def dependency_to_derivation_tree(dep_graph, leaf="POS", dep=True):
             leaf_val = Tree(leaf_label, [node['word']])
         else:
             raise ValueError("leaf must be 'POS' or 'word'.")
+        elements.append((node_id, leaf_val))
 
-        daughters = relation_nodes + [leaf_val]
-        return Tree(pos, daughters)
+        # Sort all by address (token index)
+        elements.sort(key=lambda x: x[0])
+        daughters = [elt[1] for elt in elements]
+        return [(min(idx for idx, _ in elements), Tree(pos, daughters))]
 
     # Find dependency root
     root_candidates = [nid for nid, n in nodes.items() if n['head'] == 0]
     if len(root_candidates) != 1:
         raise ValueError("Dependency tree must have exactly one root.")
     root_id = root_candidates[0]
-    return Tree("ROOT", [expand_node(root_id)])
+    # expand returns a list, take the tree part
+    _, tree = expand(root_id)[0]
+    return Tree("ROOT", [tree])
