@@ -78,6 +78,15 @@ for nt, value in site.items():
     print(f"{nt}: {value:.3f}")
 ```
 
+- **Parameters**:
+  - `trees`: A sequence of nltk tree objects.
+  - `method`: See `entropy_estimators
+		- `'CWJ'`: Smoothed using the method of Chao, Wang, & Jost (2013), as in Moscoso del Prado (2017, 2025). Default (and most accurate) method.
+		- `'CAE'`: Smoothed using Chao & Shen (2003) Coverage-Adjusted Estimator, as in Moscoso del Prado (2014).
+		- `'MLE'`: Maximum likelihood estimation (i.e., without any smoothing)
+		- Other values from `entropy_estimators` are possible, but not recommended.
+
+
 ---
 
 ### **Derivational Entropy**
@@ -127,7 +136,7 @@ print(tree.pretty_print())
 ### characteristic_matrix(pcfg)
 > Computes the characteristic matrix for a given PCFG.
 
-### SITE(trees, method="MLE")
+### SITE(trees, method="CWJ")
 > Estimates **Smoothed Induced Treebank Entropy (SITE)** from a collection of NLTK trees.
 
 ### derivational_entropy(pcfg)
