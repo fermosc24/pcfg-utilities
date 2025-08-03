@@ -186,7 +186,7 @@ def mean_length(pcfg):
     result = {nt: float(ell[idx]) for idx, nt in enumerate(nonterminals)}
     return result
 
-def SITE(trees, method="MLE"):
+def SITE(trees, method="CWJ"):
     """
     Compute the Symbolic Information Transmission Entropy (SITE) for a collection of NLTK trees.
     Returns a dict: {Nonterminal: SITE value}
@@ -212,3 +212,53 @@ def SITE(trees, method="MLE"):
     result = {nt: float(h[idx]) for idx, nt in enumerate(nonterminals)}
     return result
 
+def dependency_to_derivation_tree(dep_graph, leaf="POS", dep=True):
+    """
+    Convert an NLTK DependencyGraph to a context-free derivation tree with internal nodes
+    named after the POS, and leaves labeled 'POS*' or 'POS*'->word.
+
+    Parameters:
+        dep_graph: NLTK DependencyGraph.
+        leaf: "POS" for POS* leaves, "word" for word leaves under POS* node.
+        dep: If True, insert POS/dep relation nodes; if False, skip these and
+             directly attach dependent subtrees as daughters of POS nodes.
+    """
+    nodes = {n['address']: n for n in dep_graph.nodes.values() if n['address'] is not None}
+    children = {addr: [] for addr in nodes}
+    word_positions = {addr: addr for addr in nodes}
+
+    for addr, node in nodes.items():
+        head = node['head']
+        rel = node['rel']
+        if head is not None and head != 0:
+            children[head].append((rel, addr))
+
+    def expand_node(node_id):
+        node = nodes[node_id]
+        pos = node['tag']
+        relation_nodes = []
+        for rel, dep_id in sorted(children[node_id], key=lambda x: word_positions[x[1]]):
+            if dep:
+                rel_label = f"{pos}/{rel}"
+                relation_nodes.append(Tree(rel_label, [expand_node(dep_id)]))
+            else:
+                relation_nodes.append(expand_node(dep_id))
+
+        # Leaf node: e.g. "VBD*" (possibly with word)
+        leaf_label = f"{pos}*"
+        if leaf == "POS":
+            leaf_val = leaf_label
+        elif leaf == "word":
+            leaf_val = Tree(leaf_label, [node['word']])
+        else:
+            raise ValueError("leaf must be 'POS' or 'word'.")
+
+        daughters = relation_nodes + [leaf_val]
+        return Tree(pos, daughters)
+
+    # Find dependency root
+    root_candidates = [nid for nid, n in nodes.items() if n['head'] == 0]
+    if len(root_candidates) != 1:
+        raise ValueError("Dependency tree must have exactly one root.")
+    root_id = root_candidates[0]
+    return Tree("ROOT", [expand_node(root_id)])
