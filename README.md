@@ -129,8 +129,9 @@ conll_data = """
 9   dog     dog     NOUN    NN  _   5   obl _   _
 10  .       .       PUNCT   .   _   5   punct   _   _
 """
+dep_graph = DependencyGraph(conll_data)
 
-tree = dependency_to_derivation_tree(tree, leaf='word', dep=True)
+tree = dependency_to_derivation_tree(dep_graph,leaf='word',dep=True)
 print(tree.pretty_print())
 ```
 
