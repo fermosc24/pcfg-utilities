@@ -117,10 +117,20 @@ for nt, value in lengths.items():
 
 ```python
 from pcfg_utilities.pcfg_utilities import dependency_to_derivation_tree
-from nltk.corpus import dependency_treebank
+conll_data = """
+1   The     the     DET     DT  _   4   det _   _
+2   quick   quick   ADJ     JJ  _   4   amod    _   _
+3   brown   brown   ADJ     JJ  _   4   amod    _   _
+4   fox     fox     NOUN    NN  _   5   nsubj   _   _
+5   jumps   jump    VERB    VBZ _   0   root    _   _
+6   over    over    ADP     IN  _   5   case    _   _
+7   the     the     DET     DT  _   9   det _   _
+8   lazy    lazy    ADJ     JJ  _   9   amod    _   _
+9   dog     dog     NOUN    NN  _   5   obl _   _
+10  .       .       PUNCT   .   _   5   punct   _   _
+"""
 
-graph = dependency_treebank.parsed_sents()[0]  # example graph
-tree = dependency_to_derivation_tree(graph, leaf='word', dep=True)
+tree = dependency_to_derivation_tree(tree, leaf='word', dep=True)
 print(tree.pretty_print())
 ```
 
